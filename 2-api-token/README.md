@@ -8,7 +8,7 @@ In this challenge, you will create an individual user token for use in future la
 
 ### Login
 
-Login to <https://tap-tfe.digitalinnovation.dev>:
+Login to <https://TFE_HOSTNAME>:
 
 ![](img/tfe-login.png)
 
@@ -16,11 +16,11 @@ Verify you are part of an Organization:
 
 ![](img/tfe-organization.png)
 
-**IMPORTANT** Take note of you organization name, it can be found in the top left corner of the UI, or in the URL "https://tap-tfe.digitalinnovation.dev/app/TFE_ORG/workspaces". This will be referenced as your TFE_ORG.
+**IMPORTANT** Take note of you organization name, it can be found in the top left corner of the UI, or in the URL "https://TFE_HOSTNAME/app/TFE_ORG/workspaces". This will be referenced as your TFE_ORG.
 
 ### Generate Token
 
-Navigate to <https://tap-tfe.digitalinnovation.dev/app/settings/tokens> to generate a **user** token:
+Navigate to <https://TFE_HOSTNAME/app/settings/tokens> to generate a **user** token:
 
 ![](img/tfe-token-gen.png)
 
