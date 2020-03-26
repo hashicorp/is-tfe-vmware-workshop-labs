@@ -2,129 +2,161 @@
 
 ## Expected Outcome
 
-In this challenge you will register some modules with your Private Module Registry then reference them in a workspace.
+In this challenge you will register a module with your Private Module Registry then reference it in a workspace.
 
 ## How to:
 
-### Fork the Module Repositories
+### Create a Module Repository
 
-You are going to fork the following repositories into your own GitHub account:
+Create a new GitHub repository, similar to early labs, with the name "terraform-vsphere-vm".
 
-- https://github.com/azure-terraform-workshop/terraform-azurerm-networking.git
-- https://github.com/azure-terraform-workshop/terraform-azurerm-webserver.git
-- https://github.com/azure-terraform-workshop/terraform-azurerm-appserver.git
-- https://github.com/azure-terraform-workshop/terraform-azurerm-dataserver.git
+Create a single `main.tf` with the following contents:
 
-Each of these repositories represents a module that can be developed and versioned independently.
+```hcl
+variable "datacenter_name" {}
+variable "cluster_name" {}
+variable "datastore_name" {}
+variable "network_name" {}
+variable "virtual_machine_name" {}
 
-### Create a new github repository
+data "vsphere_datacenter" "dc" {
+  name = var.datacenter_name
+}
 
-In github, create a new public repository names "ptfe-workspace-modules".
+data "vsphere_compute_cluster" "cluster" {
+  name          = var.cluster_name
+  datacenter_id = data.vsphere_datacenter.dc.id
+}
+
+data "vsphere_datastore" "datastore" {
+  name          = var.datastore_name
+  datacenter_id = data.vsphere_datacenter.dc.id
+}
+
+data "vsphere_network" "network" {
+  name          = var.network_name
+  datacenter_id = data.vsphere_datacenter.dc.id
+}
+
+resource "vsphere_virtual_machine" "vm" {
+  name             = var.virtual_machine_name
+  resource_pool_id = data.vsphere_compute_cluster.cluster.resource_pool_id
+  datastore_id     = data.vsphere_datastore.datastore.id
+  num_cpus         = 2
+  memory           = 1024
+  guest_id         = "other3xLinux64Guest"
+
+  network_interface {
+    network_id = data.vsphere_network.network.id
+  }
+
+  wait_for_guest_net_timeout = 0
+
+  disk {
+    label = "disk0"
+    size  = 20
+  }
+}
+```
+
+Commit the changes:
+
+```sh
+git add *
+git commit -m "My First Module"
+git push origin master
+```
+
+### Update github repository
+
+Back in your `ptfe-workspace` repository created earlier.
+
+Add a new folder called `app-vm-dev-modules`.
 
 Create a single `main.tf` file with the following contents:
 
 ```hcl
-variable "name" {}
-variable "location" {}
-variable "username" {}
-variable "password" {}
-
-variable "vnet_address_spacing" {
-  type = "list"
+# Provider Credentials can be loaded via
+# export VSPHERE_SERVER=""
+# export VSPHERE_USER=""
+# export VSPHERE_PASSWORD=""
+provider "vsphere" {
+  allow_unverified_ssl = true
 }
 
-variable "subnet_address_prefixes" {
-  type = "list"
+locals {
+  datacenter_name      = "Datacenter"
+  cluster_name         = "East"
+  datastore_name       = "<DATASTORE_NAME>"
+  network_name         = "VM Network"
+  virtual_machine_name = "<VM_NAME>"
 }
 
-module "networking" {
-  source  = "TFE_HOSTNAME/YOUR_ORG_NAME/networking/azurerm"
-  version = "0.12.0"
+module "vm" {
+  source  = "TFE_HOSTNAME/YOUR_ORG_NAME/vm/vsphere"
+  version = "0.0.1"
 
-  name                    = var.name
-  location                = var.location
-  vnet_address_spacing    = var.vnet_address_spacing
-  subnet_address_prefixes = var.subnet_address_prefixes
+  datacenter_name      = local.datacenter_name
+  cluster_name         = local.cluster_name
+  datastore_name       = local.datastore_name
+  network_name         = local.network_name
+  virtual_machine_name = local.virtual_machine_name
 }
 ```
 
-Update the source arguments to your organization by replacing "YOUR_ORG_NAME" with your TFE organization name.
+Update the local variables and the `source` argument on the module declaration to your hostname and organization.
 
 Commit the file and check the code into github.
 
 ### Create a workspace
 
-Create a TFE workspace that uses the VSC connection to load this new repository.
+Create a TFE workspace that uses the VSC connection to load your repository.
+
+Select the repository and name the workspace "ptfe-workspace-modules" and select the working directory as "/app-vm-dev-modules".
 
 ![](img/tfe-new-workspace.png)
 
-Select the repository and name the workspace the same thing "ptfe-workspace-modules"
-
-![](img/tfe-new-workspace-final.png)
-
 ### Add Modules
 
-Before we can use our Networking module, we need to add it to the Private Module Registry.
+Before we can use our new module, we need to add it to the Private Module Registry.
 
 Navigate back to Terraform Enterprise and click the "Modules" menu at the top of the page. From there click the "+ Add Module" button.
 
 ![](img/tfe-add-module.png)
 
-Select the networking repository you forked earlier.
+Select the repository you created above ("terraform-vsphere-vm").
 
 ![](img/tfe-select-module-repo.png)
 
-> Note: You will see your github user name instead of 'azure-terraform-workshop/' since you forked this repo.
+> Note: You will see your github user name since the repo is in your github account.
 
 Click "Publish Module".
 
 This will query the repository for necessary files and tags used for versioning.
 
+> Note: this could take a few minutes to complete.
+
 Congrats, you are done!
 
 Ok, not really...
 
-Repeat this step for the other three modules:
+We need to tag the repository to be able to publish a version.
 
-- terraform-azurerm-appserver
-- terraform-azurerm-dataserver
-- terraform-azurerm-webserver
+```sh
+git tag v0.0.1 master
+git push origin v0.0.1
+```
 
 ### Configure Workspace Variables
 
 Navigate back to your "ptfe-workspace-modules" workspace.
 
-Set the Terraform Variables:
 
-- 'name' - A unique environment name such as `myusername`
-- 'location' - An Azure region such as `eastus` or `centralus`
-- 'username' (sensitive) - A username for the VM's
-> Note: this can not be "admin"
-- 'password' (sensitive) - A password for the VM's
-> NOTE: password must be between 6-72 characters long and must satisfy at least 3 of password complexity requirements from the following:
-> 1. Contains an uppercase character
-> 2. Contains a lowercase character
-> 3. Contains a numeric digit
-> 4. Contains a special character
-- 'vnet_address_spacing' (HCL) - The Vnet Address space
-    ```hcl
-    ["10.0.0.0/16"]
-    ```
-- 'subnet_address_prefixes' (HCL) - The Subnet Address spaces representing 3 subnets
-    ```hcl
-    [
-    "10.0.0.0/24",
-    "10.0.1.0/24",
-    "10.0.2.0/24",
-    ]
-    ```
+Set Environment Variables for your VSphere provider (be sure check the 'sensitive' checkbox to hide the password):
 
-Set Environment Variables for your Azure Service Principal (be sure check the 'sensitive' checkbox to hide these values):
-
-- ARM_TENANT_ID
-- ARM_SUBSCRIPTION_ID
-- ARM_CLIENT_ID
-- ARM_CLIENT_SECRET
+- VSPHERE_SERVER
+- VSPHERE_USER
+- VSPHERE_PASSWORD
 
 ### Run a Plan
 
@@ -136,75 +168,24 @@ Wait for the Plan to complete.
 
 You should see several additions to deploy your networking.
 
-### Apply the Plan
+### Apply the Plan (Optional)
 
 Approve the plan and apply it.
 
 Watch the apply progress and complete.
 
-Login to the at Azure Portal to see your infrastructure.
-
-### Update a Module
-
-In the `ptfe-workspace-modules` repository, navigate to the `main.tf` file.
-
-Add the following to deploy the rest of your application (again, be sure to update the source references):
-
-```hcl
-module "webserver" {
-  source  = "TFE_HOSTNAME/YOUR_ORG_NAME/webserver/azurerm"
-  version = "0.12.0"
-
-  name      = var.name
-  location  = var.location
-  subnet_id = module.networking.subnet-ids[0]
-  vm_count  = 1
-  username  = var.username
-  password  = var.password
-}
-
-module "appserver" {
-  source  = "TFE_HOSTNAME/YOUR_ORG_NAME/appserver/azurerm"
-  version = "0.12.0"
-
-  name      = var.name
-  location  = var.location
-  subnet_id = module.networking.subnet-ids[1]
-  vm_count  = 1
-  username  = var.username
-  password  = var.password
-}
-
-module "dataserver" {
-  source  = "TFE_HOSTNAME/YOUR_ORG_NAME/dataserver/azurerm"
-  version = "0.12.0"
-
-  name      = var.name
-  location  = var.location
-  subnet_id = module.networking.subnet-ids[2]
-  vm_count  = 1
-  username  = var.username
-  password  = var.password
-}
-```
-
-Commit your change and see what the changes show in the plan.
-
-If you are satisfied with the changes, apply the changes.
-
-## Advanced areas to explore
+## Extra Credit
 
 1. Make a change to a module repository and tag it in such a way that the change shows in your Private Module Registry.
+2. Extra workspace locals into Terraform Variables.
 
-## Clean Up
+## Clean Up (if you ran apply)
 
 Add an Environment variable to your workspace "CONFIRM_DESTROY=1".
 
 Navigate to the workspace "Settings" -> "Destruction and Deletion".
 
 Click Queue Destroy Plan.
-
-![](img/tfe-destroy-plan.png)
 
 Once the plan completes, apply it to destroy your infrastructure.
 

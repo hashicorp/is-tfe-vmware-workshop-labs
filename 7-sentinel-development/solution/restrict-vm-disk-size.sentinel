@@ -1,35 +1,15 @@
-# Terraform Enterprise - Sentinel Development
+# This policy uses the Sentinel tfplan import to require that
+# all VMware VMs obey a disk limit
 
-## Create Folder Structure
-
-Create and change directory into a folder on your local machine.
-
-For example: `cd ~/TerraformWorkshop/sentinel-development/`.
-
-## Create Sentinel File
-
-Create a new file `restrict-vm-disk-size.sentinel`.
-
-Add imports:
-
-```hcl
 ##### Imports #####
 
 import "tfplan"
 import "strings"
-```
 
-Add a list of allowed VM Sizes:
-
-```hcl
 ##### Variables #####
 
 max_disk_size = 100
-```
 
-Add a helper function that will find all resources of a specific type from all modules using the tfplan import:
-
-```hcl
 ##### Functions #####
 
 # Find all resources of a specific type from all modules using the tfplan import
@@ -62,11 +42,7 @@ find_resources_from_plan = func(type) {
 
   return resources
 }
-```
 
-Add another helper function to validate disk size
-
-```hcl
 # Validate that all VMware VMs have disk sizes beneath specified limit
 validate_disk_size = func(disk_limit) {
 
@@ -118,11 +94,7 @@ validate_disk_size = func(disk_limit) {
 
   return validated
 }
-```
 
-Finally, add validation function and a main rule to tests is pass/fail:
-
-```hcl
 ##### Rules #####
 
 # Call the validation function
@@ -132,79 +104,3 @@ vm_disks_validated = validate_disk_size(max_disk_size)
 main = rule {
   vm_disks_validated is true
 }
-```
-
-> Note: If you get lost, see the solution folder for an example.
-
-## Create a test folder structure
-
-Create a the structure `test/restrict-vm-disk-size`.
-Add a single file named `pass.json` in the new directory, with the following contents:
-
-```json
-{
-  "mock": {
-    "tfplan": "mock-tfplan-pass.sentinel"
-  },
-  "test": {
-    "main": true
-  }
-}
-```
-
-Now create a file named `mock-tfplan-pass.sentinel` in the same directory.
-
-## Download a mock
-
-Back in TFE, navigate to the ` app-vm-dev` and find a previous successful run.
-
-Click the "Download Sentinel Mocks" button.
-
-![](img/sentinel-mocks-download.png)
-
-Once downloaded, extract the contents and find the `tfplan` mock.
-
-Copy the contents into the `mock-tfplan-success.sentinel` file you created in the last step.
-
-## Run a test
-
-In the `restrict-vm-disk-size.sentinel` file, locate the line:
-
-```hcl
-print(address) # debug statement
-```
-
-This is there to show how to get information out of a policy while testing.
-
-Run this command: `sentinel test -verbose -run restrict-vm-disk-size.sentinel`
-
-Your output should look something like this:
-
-```sh
-PASS - restrict-vm-disk-size.sentinel
-  PASS - test/restrict-vm-disk-size/pass.json
-
-
-    logs:
-      vsphere_virtual_machine.vm[0]
-    trace:
-      TRUE - restrict-vm-disk-size.sentinel:104:1 - Rule "main"
-```
-
-Work with that debug statement to play around with the policy.
-
-Success! You now have a valid sentinel policy!
-
-## Write another test
-
-Create a new file `test/restrict-vm-disk-size/fail.json`.
-
-Create a new file `test/restrict-vm-disk-size/mock-fail-tfplan.sentintel`.
-
-Update both files to represent a negative test.
-
-## Resources
-
-- [Sentinel Docs](https://docs.hashicorp.com/sentinel/)
-- [Example VMware Policies](https://github.com/hashicorp/terraform-guides/tree/master/governance/second-generation/vmware)
-- [More Policy Examples](https://github.com/hashicorp/tfe-policies-example)

@@ -120,7 +120,7 @@ In your repository, create a folder called "app-vm-dev" and then create a `main.
 ```hcl
 # Provider Credentials can be loaded via
 # export VSPHERE_SERVER=""
-# export VSPHERE_USERNAME=""
+# export VSPHERE_USER=""
 # export VSPHERE_PASSWORD=""
 provider "vsphere" {
   allow_unverified_ssl = true
@@ -131,7 +131,7 @@ locals {
   cluster_name         = "East"
   datastore_name       = "<DATASTORE_NAME>"
   network_name         = "VM Network"
-  virutal_machine_name = "<VM_NAME>"
+  virtual_machine_name = "<VM_NAME>"
 }
 
 data "vsphere_datacenter" "dc" {
@@ -154,7 +154,7 @@ data "vsphere_network" "network" {
 }
 
 resource "vsphere_virtual_machine" "vm" {
-  name             = local.virutal_machine_name
+  name             = local.virtual_machine_name
   resource_pool_id = data.vsphere_compute_cluster.cluster.resource_pool_id
   datastore_id     = data.vsphere_datastore.datastore.id
   num_cpus         = 2
@@ -198,7 +198,7 @@ Enter the following into the Environment Variables section:
 
 ```sh
 VSPHERE_SERVER=
-VSPHERE_USERNAME=
+VSPHERE_USER=
 VSPHERE_PASSWORD=
 ```
 
