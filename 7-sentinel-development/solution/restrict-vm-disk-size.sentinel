@@ -1,6 +1,9 @@
 # This policy uses the Sentinel tfplan import to require that
 # all VMware VMs obey a disk limit
 
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 ##### Imports #####
 
 import "tfplan"
